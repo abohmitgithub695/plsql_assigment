@@ -1,0 +1,88 @@
+ CREATE TABLE user_man_sys
+    (
+       user_id         INT NOT NULL,
+       user_name       NVARCHAR2 (20) NOT NULL,
+       user_password   INT,
+       created_date    DATE,
+       PRIMARY KEY (user_id)
+    );
+CREATE TABLE credentials
+    (
+       password   VARCHAR2 (10),
+       username   VARCHAR2 (20)
+    );
+CREATE OR REPLACE PACKAGE mypackage
+    AS
+       PROCEDURE add_user (u_id            user_man_sys.user_id%TYPE,
+                           u_name          user_man_sys.user_name%TYPE,
+                           u_password      user_man_sys.user_password%TYPE,
+                           u_created_data  user_man_sys.created_date%TYPE);
+  
+       PROCEDURE Checkuserlogin (new_username  user_man_sys.user_name%TYPE,
+                                 new_password  user_man_sys.user_password%TYPE);
+ 
+      PROCEDURE rest_password (r_password      user_man_sys.user_password%TYPE,
+                               r_user          user_man_sys.user_name%TYPE,
+                               par_result  OUT VARCHAR2);
+   END mypackage;
+   /
+CREATE OR REPLACE PACKAGE BODY mypackage
+    AS
+       PROCEDURE add_user (u_id            user_man_sys.user_id%TYPE,
+                           u_name          user_man_sys.user_name%TYPE,
+                           u_password      user_man_sys.user_password%TYPE,
+                           u_created_data  user_man_sys.created_date%TYPE)
+       IS
+       BEGIN
+          INSERT INTO user_man_sys (user_id,
+                                   user_name,
+                                   user_password,
+                                   created_date)
+              VALUES (u_id,
+                      u_name,
+                      u_password,
+                      u_created_data);
+      END add_user;
+ 
+      PROCEDURE Checkuserlogin (new_username  user_man_sys.user_name%TYPE,
+                                new_password  user_man_sys.user_password%TYPE)
+      IS
+         l_val  NUMBER;
+      BEGIN
+         --SET NOCOUNT ON
+ 
+         SELECT CASE
+                   WHEN EXISTS
+                           (SELECT NULL
+                              FROM user_man_sys
+                             WHERE     user_id = new_username
+                                   AND user_password = new_password)
+                   THEN
+                      1
+                   ELSE
+                      0
+                END
+           INTO l_val
+           FROM DUAL;
+      END Checkuserlogin;
+ 
+      PROCEDURE rest_password (r_password      user_man_sys.user_password%TYPE,
+                               r_user          user_man_sys.user_name%TYPE,
+                               par_result  OUT VARCHAR2)
+      IS
+      BEGIN
+         UPDATE credentials
+            SET password = r_password            -- use as parameter in procedure
+          WHERE username = r_user;
+ 
+         -- or you can include "and id = p_id" in where clause
+         IF SQL%ROWCOUNT > 0
+         THEN
+            COMMIT;
+            par_result := 'Password Reset Successful.';
+         ELSE
+            par_result := 'Password Reset Failed. Invalid User Name';
+         END IF;
+      END rest_password;
+   END mypackage;
+   /
